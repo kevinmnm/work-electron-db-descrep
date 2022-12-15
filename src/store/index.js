@@ -20,8 +20,8 @@ export default new Vuex.Store({
       conn_table_filter: ['host', 'port', 'user', 'mysql_version', 'system_time_zone', 'global_time_zone', 'session_time_zone'], // Filter to show on table UI (static value) and must be included in CONNS_FILTERS variable.
       conns: {}, // {<title>: {...}}
       // schema_synced: [],
-      schema_selected: null,
-      schema_confirmed: null,
+      schema_selected: {}, // {<title>: '', <title>: ''}
+      schema_confirmed: null, // {<title>: '', <title>: ''}
       conn_fetching: false,
       fetching: false, // Whole app loading.
    },
@@ -60,18 +60,6 @@ export default new Vuex.Store({
 
          return comparables;
       },
-      /**
-       * Selected schema to compare tables from.
-      **/
-      // schema_confirmed(state, getters) {
-      //    const readyState = getters.ready_state;
-      //    const schemaSelected = getters.schema_selected;
-      //    if (!readyState || !schemaSelected) return false;
-      //    return state.schema_confirmed;
-      // },
-      /**
-       * Schema is selected (state.schema_selected has value) and confirmed (state.schema_confirmed has value) and getter.ready_state is true.
-      **/
       comparable_state(state, getters) {
          const readyState = getters.ready_state;
          const schemaSelected = state.schema_selected;
@@ -105,7 +93,21 @@ export default new Vuex.Store({
          state.schema_synced = payload;
       },
       SCHEMA_SELECTED(state, payload) {
-         state.schema_selected = payload;
+         // state.schema_selected = payload;
+         if (!payload) {
+            const schemaSelected = state.schema_selected;
+            if (Object.keys(schemaSelected).length < 1) {
+               state.schema_selected = {};
+               return;
+            }
+            for (const title in schemaSelected) {
+               state.schema_selected[title] = null;
+            }
+            return;
+         }
+         const { title, value } = payload;
+         console.warn({ title, value });
+         state.schema_selected[title] = value;
       },
       SCHEMA_CONFIRMED(state, payload) {
          state.schema_confirmed = payload;
@@ -127,23 +129,26 @@ export default new Vuex.Store({
          return { status: true, msg: `Retrieved CONNS`, }
       },
       async schemaConfirmed({ commit }, payload) {
-         const schema = payload;
-         const backendResult = await window.electronAPI["CLIENT::schema-confirmed"]({ schema });
+         const schemas = payload;
+         console.warn({ schemas });
+         // const backendResult = await window.electronAPI["CLIENT::schema-confirmed"]({ schema });
+         const backendResult = await window.electronAPI["CLIENT::schema-confirmed"](schemas);
          if (!backendResult.status) {
             console.error(backendResult.msg);
             return backendResult;
          }
 
          // commit("SCHEMA_SELECTED", schema);
-         commit("SCHEMA_CONFIRMED", schema);
+         commit("SCHEMA_CONFIRMED", schemas);
 
          return backendResult;
       },
       async resetSchema({ state, commit }) {
 
          const currentSchema = state.schema_confirmed;
-         if (!currentSchema) {
+         if (!currentSchema || Object.keys(currentSchema).length < 1) {
             const msg = `No schema selected`;
+            console.error(msg);
             return { status: false, msg }
          }
 

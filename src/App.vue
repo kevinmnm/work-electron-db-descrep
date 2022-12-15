@@ -25,13 +25,30 @@ export default Vue.extend({
          //## BACKG::schema-confirmed ##//
          window.electronAPI["BACKG::schema-confirmed"]((event, payload) => {
             console.warn({ event, payload, test: this });
+
+            if (
+               !payload ||
+               typeof payload !== "object" ||
+               Array.isArray(payload) ||
+               payload === null
+            )
+               throw new Error("Schema gone wrong..");
+
             event.sender.send("CLIENT::notification", {
                title: "Schema Changed",
                body: ``,
             });
-            const schema = !payload ? null : payload.schema;
+            // const schema = !payload ? null : payload.schema;
+            // const title = payload.title;
 
-            this.$store.commit("SCHEMA_SELECTED", schema);
+            // this.$store.commit("SCHEMA_SELECTED", { title, value: schema });
+
+            for (const title in payload) {
+               this.$store.commit("SCHEMA_SELECTED", {
+                  title,
+                  value: payload,
+               });
+            }
          });
 
          //## BACKG::progress ##//

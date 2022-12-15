@@ -1,6 +1,6 @@
 <template>
    <v-sheet>
-      <v-sheet
+      <!-- <v-sheet
          v-if="show"
          :class="['d-flex', is_mobile ? 'flex-column' : 'flex-row']"
       >
@@ -12,8 +12,11 @@
          >
             <DescreDataTable :table-data="mt" />
          </v-sheet>
+      </v-sheet> -->
+      <v-sheet>
+         <DescreDataTable />
       </v-sheet>
-      <v-sheet v-if="!missing_tables">No missing tables!</v-sheet>
+      <!-- <v-sheet v-if="!missing_tables">No missing tables!</v-sheet> -->
    </v-sheet>
 </template>
 

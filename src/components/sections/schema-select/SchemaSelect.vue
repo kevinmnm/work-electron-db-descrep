@@ -2,11 +2,11 @@
    <v-sheet v-if="ready_state">
       <v-sheet v-if="co_schemas_exist">
          <PanelWrapper :panel-toggle="panel_toggler">
-            <template v-slot:title>Schema</template>
+            <template v-slot:title>Schemas</template>
 
             <!-- <template v-slot:header-opened>opened</template> -->
             <template v-slot:header-closed>
-               <span class="schema-confirmed" v-html="panel_desc"></span>
+               <span v-html="panel_desc"></span>
             </template>
 
             <template v-slot:content>
@@ -30,7 +30,9 @@
                         }}</v-card-title>
                         <v-card-text>
                            <v-select
-                              v-model="schema_selected"
+                              @change="
+                                 selectSchema($event, { title: conn.title })
+                              "
                               :class="['flex-grow-1']"
                               :label="select_label"
                               filled
@@ -52,7 +54,7 @@
                         :disabled="!schema_selected"
                         :loading="fetching_tables"
                         color="primary"
-                        >SELECT</v-btn
+                        >CONFIRM</v-btn
                      >
                   </v-card>
                </v-sheet>
@@ -93,7 +95,7 @@
                      v-if="schema_confirmed"
                      :class="['d-flex', is_mobile ? 'flex-column' : 'flex-row']"
                   >
-                     <v-card
+                     <!-- <v-card
                         class="d-flex flex-row flex-grow-1"
                         flat
                         tile
@@ -117,8 +119,38 @@
                               >CHANGE</v-btn
                            >
                         </v-card-actions>
+                     </v-card> -->
+
+                     <v-card
+                        v-for="(schema, ind) in schema_confirmed_entries"
+                        :key="schema + ind"
+                        outlined
+                        :width="form_width"
+                     >
+                        <v-card-title class="title--text">{{
+                           schema[0]
+                        }}</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                           <span class="schema-confirmed">{{ schema[1] }}</span>
+                        </v-card-text>
                      </v-card>
                   </v-sheet>
+
+                  <v-btn
+                     v-if="show_change_btn"
+                     @click="changeSchema"
+                     block
+                     text
+                     tile
+                     outlined
+                     :disabled="fetching_tables"
+                     :loading="fetching_tables"
+                     class="mt-2"
+                     color="primary"
+                     >CHANGE</v-btn
+                  >
+
                   <v-sheet v-if="false" :class="['d-flex', 'flex-row']">
                      <SchemaInfo
                         v-for="(conn, ind) in conns_array"
@@ -164,17 +196,24 @@ export default {
             this.$store.commit("SCHEMA_TOGGLE", val);
          },
       },
-      schema_selected: {
-         get() {
-            return this.$store.state.schema_selected;
-         },
-         set(schema) {
-            // this.$store.dispatch("schemaSelected", schema);
-            this.$store.commit("SCHEMA_SELECTED", schema);
-         },
+      // schema_selected: {
+      //    get() {
+      //       return this.$store.state.schema_selected;
+      //    },
+      //    set(schema) {
+      //       // this.$store.dispatch("schemaSelected", schema);
+      //       this.$store.commit("SCHEMA_SELECTED", schema);
+      //    },
+      // },
+      schema_selected() {
+         return this.$store.state.schema_selected;
       },
       schema_confirmed() {
          return this.$store.state.schema_confirmed;
+      },
+      schema_confirmed_entries() {
+         const sCon = this.schema_confirmed;
+         return Object.entries(sCon);
       },
       co_schemas_exist() {
          return this.comparable_schemas.length > 0;
@@ -182,10 +221,19 @@ export default {
       fetching_tables() {
          return this.$store.state.results.fetching_tables;
       },
+      // panel_desc() {
+      //    const schemaConfirmed = this.schema_confirmed;
+      //    if (!schemaConfirmed) return "";
+      //    return `<b>${schemaConfirmed}</b>`;
+      // },
       panel_desc() {
          const schemaConfirmed = this.schema_confirmed;
          if (!schemaConfirmed) return "";
-         return `<b>${schemaConfirmed}</b>`;
+         const scVals = Object.values(schemaConfirmed);
+         if (scVals.length < 1) return "";
+         const scMap = scVals.map(val => `<b class="schema-confirmed">${val}</b>`);
+         const desc = scMap.join(' vs ');
+         return desc;
       },
       conns() {
          return this.$store.state.conns;
@@ -223,15 +271,29 @@ export default {
          if (!titles) return "auto";
          return isMobile ? "100%" : `${100 / titles.length}%`;
       },
+      show_change_btn() {
+         const sC = this.schema_confirmed;
+         return sC && Object.keys(sC).length > 0;
+      },
    },
 
    methods: {
+      selectSchema($event, params) {
+         if (!params || !params.title) {
+            throw new Error("bad");
+         }
+         const title = params.title;
+         this.$store.commit("SCHEMA_SELECTED", {
+            title,
+            value: $event,
+         });
+      },
       async getSchemasInfo() {
          const schemaSelected = this.schema_selected;
          this.$store.commit("CONNECTION_TOGGLE", []);
          this.$store.commit("SCHEMA_TOGGLE", []);
+         // const scCon = this.schema_confirmed;
          await this.$store.dispatch("schemaConfirmed", schemaSelected);
-         this.$store.commit("SCHEMA_CONFIRMED", this.schema_selected);
          await this.$store.dispatch("getSchemasInfo");
          // this.panel_toggler = [];
       },

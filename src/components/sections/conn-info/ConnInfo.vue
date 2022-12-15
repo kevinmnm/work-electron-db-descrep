@@ -64,24 +64,8 @@ export default {
          if (!conns || typeof conns !== "object") return [];
          return Object.keys(conns);
       },
-      // conns_count() {
-      //    const conns = this.conns;
-      //    return Object.values(conns).length;
-      // },
       is_mobile() {
          return this.$vuetify.breakpoint.mobile;
-      },
-      // all_connected() {
-      //    return this.conn_limit === this.conns_count;
-      // },
-      schema_selected: {
-         get() {
-            return this.$store.state.schema_selected;
-         },
-         set(schema) {
-            // this.$store.commit("SCHEMA_SELECTED", schema);
-            this.$store.dispatch("schemaSelected", schema);
-         },
       },
       comparable_schemas() {
          return this.$store.getters.comparable_schemas;

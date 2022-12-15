@@ -100,10 +100,26 @@ export default {
       schema_confirmed() {
          return this.$store.state.schema_confirmed;
       },
+      // panel_desc() {
+      //    const schemaConfirmed = this.schema_confirmed;
+      //    if (!schemaConfirmed) return "";
+      //    return `Results for <b class="schema-confirmed">${schemaConfirmed}</b> schema`;
+      // },
       panel_desc() {
          const schemaConfirmed = this.schema_confirmed;
          if (!schemaConfirmed) return "";
-         return `Results for <b class="schema-confirmed">${schemaConfirmed}</b> schema`;
+         const entries = Object.entries(schemaConfirmed);
+         if (entries.length < 1) return "";
+         const format = entries.map((entry) => {
+            const title = entry[0];
+            const schema = entry[1];
+            const el = `<b class="db-title">${title}</b>:<b class="schema-confirmed">${schema}</b>`;
+            return el;
+         });
+
+         const formatList = format.join(" vs ");
+         const desc = `${formatList}`;
+         return desc;
       },
    },
 };

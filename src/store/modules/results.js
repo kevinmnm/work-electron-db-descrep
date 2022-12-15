@@ -3,6 +3,7 @@ export default {
       tables_info: null, // {<title>: [{}, {},], <title>: [{}, {},]}.
       fetching_tables: false,
       missing_tables: null, // {<title>: [<table name>, <table name>,], <title>: [<table name>, <table name>,]}
+      extra_tables: null, // {<title>: [<table name>, <table name>,], <title>: [<table name>, <table name>,]}
       // missing_columns: null, // {<title>: {<table name>: [<column name>,], <table name>}: [<column name>,],}
       missing_columns: null, // [{ column: '', table: '' }, ]
    },
@@ -22,6 +23,9 @@ export default {
       },
       MISSING_TABLES(state, payload) {
          state.missing_tables = payload;
+      },
+      EXTRA_TABLES(state, payload) {
+         state.extra_tables = payload;
       },
       MISSING_COLUMNS(state, payload) {
          state.missing_columns = payload;
@@ -86,7 +90,9 @@ export default {
 
          const totalSchemasCount = entries.length;
 
-         const missings = {};
+         const othersDoNotHaves = {};
+
+         //!! BELOW LOGIC IS INCORRECT !!//
 
          entries.forEach((conn, index) => {
             const title = conn[0];
@@ -94,7 +100,7 @@ export default {
 
             // const allTables = tables.map( table => table.TABLE_NAME);
 
-            if (!missings[title]) missings[title] = [];
+            if (!othersDoNotHaves[title]) othersDoNotHaves[title] = [];
 
 
             tables.forEach((table) => {
@@ -107,7 +113,6 @@ export default {
                      const otherConnTables = otherConn[1];
 
                      let hasSameTableName = false;
-                     // let createQuery;
                      let existsIn = '';
                      for (let k = 0; k < otherConnTables.length; k++) {
                         const otherTable = otherConnTables[k];
@@ -115,22 +120,20 @@ export default {
                         if (tableName === otherTableName) {
                            hasSameTableName = true;
                            existsIn = '';
-                           // createQuery = '';
                            break;
                         } else {
-                           // createQuery = /*SQL*/`
-                           //    SHOW CREATE TABLE ${schemaConfirmed}.${otherTableName};
-                           // `.trim();
-                           existsIn = otherConnTitle;
+                           // existsIn = otherConnTitle;
+                           otherConnTitle;
+                           existsIn = tableName;
                         }
                      }
 
                      if (!hasSameTableName) {
-                        if (!missings[title]) {
-                           missings[title] = [];
+                        if (!othersDoNotHaves[title]) {
+                           othersDoNotHaves[title] = [];
                         }
 
-                        missings[title].push({ name: tableName, exists_in: existsIn, create_query: table.__create_query });
+                        othersDoNotHaves[title].push({ name: tableName, exists_in: existsIn, create_query: table.__create_query });
                      }
                   }
                }
@@ -138,7 +141,15 @@ export default {
             });
          });
 
-         commit('MISSING_TABLES', missings);
+         const collectDiscTables = [...new Set(Object.values(othersDoNotHaves).flat())].map(obj => obj.name);
+         // for (const title in othersDoNotHaves) {
+         //    const discTables = othersDoNotHaves[title];
+         // }
+
+         // console.warn({ collectDiscTables });
+
+         commit('MISSING_TABLES', othersDoNotHaves);
+         commit('EXTRA_TABLES', collectDiscTables);
 
          await dispatch('detectColumnDiscrep');
 

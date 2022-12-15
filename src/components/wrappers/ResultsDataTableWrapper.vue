@@ -1,6 +1,6 @@
 <template>
    <v-data-table :headers="headersProp" :items="itemsProp" dense>
-      <template v-slot:top>
+      <template v-if="titleProp" v-slot:top>
          <v-card class="text-center" flat tile>
             <v-card-text class="db-title">{{ titleProp }}</v-card-text>
          </v-card>
@@ -34,7 +34,7 @@ export default {
       },
       titleProp: {
          type: String,
-         required: true,
+         required: false,
       },
       headersProp: {
          type: Array,

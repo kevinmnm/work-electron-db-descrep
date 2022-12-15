@@ -156,7 +156,7 @@ app.on('ready', async () => {
          `;
          return query;
       },
-      getTableSchema: (table, schema = DEFAULT_DB) => {
+      getTableSchema: (table, schema) => {
          if (!table) throw new Error('No table name.');
          // schema = JSON.stringify(schema);
          // table = JSON.stringify(table);
@@ -167,13 +167,13 @@ app.on('ready', async () => {
          `;
          return query;
       },
-      getCreateTableQuery: (table, schema = DEFAULT_DB) => {
+      getCreateTableQuery: (table, schema) => {
          const query = /*SQL*/`
             SHOW CREATE TABLE \`${schema}\`.\`${table}\`
          `;
          return query;
       },
-      getTableColumnNames: (table, schema = DEFAULT_DB, title) => {
+      getTableColumnNames: (table, schema, title) => {
          // table = JSON.stringify(table);
          // schema = JSON.stringify(schema);
          const query = /*SQL*/`
@@ -191,29 +191,6 @@ app.on('ready', async () => {
          `;
          return query;
       },
-      // getColumnNamesAndCreateQuery: (table, schema = DEFAULT_DB, title) => {
-      //    table = JSON.stringify(table);
-      //    schema = JSON.stringify(schema);
-
-      //    const query = /*SQL*/`
-      //       SELECT
-      //          COLUMN_NAME,
-      //          ${table} AS '__table',
-      //          (
-      //             SHOW CREATE TABLE ${schema}.${table}
-      //          ) AS '__create_query'
-      //          ${title ? `, \'${title}\' AS '__title'` : ''}
-      //       FROM
-      //          INFORMATION_SCHEMA.COLUMNS
-      //       WHERE
-      //          TABLE_NAME = ${table}
-      //          AND
-      //          TABLE_SCHEMA = ${schema}
-      //    ;
-      //    `;
-
-      //    return query;
-      // },
    }
 
    const CONNS_FILTERS = ['title', 'host', 'port', 'user', 'database', 'timezone', 'all_schemas', 'mysql_version', 'system_time_zone', 'global_time_zone', 'session_time_zone'];
@@ -349,25 +326,34 @@ app.on('ready', async () => {
             return { status: false, msg };
          }
 
-         const schemaName = payload.schema;
-         if (SCHEMA === schemaName) {
-            return { status: true, msg: `Same schema` }
-         }
-         SCHEMA = schemaName;
+         // const schemaName = payload.schema;
 
-         return { status: true, msg: `Comparing database schmea was changed to ${SCHEMA}` }
+         // if (SCHEMA === schemaName) {
+         //    return { status: true, msg: `Same schema` }
+         // }
+         // SCHEMA = schemaName;
+
+         // return { status: true, msg: `Comparing database schmea was changed to ${SCHEMA}` }
+
+         const schemas = payload;
+
+         for (const title in schemas) {
+            SCHEMAS[title] = schemas[title];
+         }
+
+         return { status: true, msg: `new SCHEMAS obj: ${JSON.stringify(SCHEMAS)}` };
       });
 
       //## CLIENT::get-tables-info ##//
       ipcMain.handle("CLIENT::get-tables-info", async (event, payload) => {
          try {
-            const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
-            if (!schema) {
-               return {
-                  status: false,
-                  msg: 'No schema selected',
-               }
-            }
+            // const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
+            // if (!schema) {
+            //    return {
+            //       status: false,
+            //       msg: 'No schema selected',
+            //    }
+            // }
 
             if (!POOLS || Object.keys(POOLS).length < 1) {
                const msg = `Something very wrong!`;
@@ -391,6 +377,8 @@ app.on('ready', async () => {
                   webCont.send("BACKG::progress", {
                      msg: `Fetching tables in ${title}`,
                   });
+
+                  const schema = SCHEMAS[title]
 
                   const tablesInfos = await query(QUERIES.getAllTablesInfo(title, schema));
 
@@ -522,13 +510,13 @@ app.on('ready', async () => {
       //## CLIENT::get-columns ##//
       ipcMain.handle("CLIENT::get-columns", async (event, payload) => {
          try {
-            const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
-            if (!schema) {
-               return {
-                  status: false,
-                  msg: 'No schema selected',
-               }
-            }
+            // const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
+            // if (!schema) {
+            //    return {
+            //       status: false,
+            //       msg: 'No schema selected',
+            //    }
+            // }
 
             if (!POOLS || Object.keys(POOLS).length < 1) {
                const msg = `Something very wrong!`;
@@ -572,14 +560,14 @@ app.on('ready', async () => {
 
       //## CLIENT::compare-all ##//
       ipcMain.handle("CLIENT::compare-all", async (event, payload) => {
-         const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
+         // const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
 
-         if (!schema) {
-            return {
-               status: false,
-               msg: 'No schema selected',
-            }
-         }
+         // if (!schema) {
+         //    return {
+         //       status: false,
+         //       msg: 'No schema selected',
+         //    }
+         // }
 
          const {
             getAllTablesInfo,
@@ -629,7 +617,8 @@ app.on('ready', async () => {
 
       //## CLIENT::schema-reset ##//
       ipcMain.handle("CLIENT::schema-reset", (event, payload) => {
-         SCHEMA = null;
+         // SCHEMA = null;
+         SCHEMAS = {};
          return {
             status: true,
             msg: "Reset schema"
@@ -661,8 +650,9 @@ app.on('ready', async () => {
                await Promise.all(ends);
                POOLS = {};
                CONNS = {};
-               SCHEMA = null;
-               mainWindow.webContents.send("BACKG::schema-confirmed", { schema: SCHEMA });
+               // SCHEMA = null;
+               SCHEMAS = {};
+               mainWindow.webContents.send("BACKG::schema-confirmed", SCHEMAS);
                res(true);
                return;
             }
@@ -677,8 +667,9 @@ app.on('ready', async () => {
             await end();
             delete POOLS[title];
             delete CONNS[title];
-            SCHEMA = null;
-            mainWindow.webContents.send("BACKG::schema-confirmed", { schema: SCHEMA });
+            // SCHEMA = null;
+            delete SCHEMAS[title];
+            mainWindow.webContents.send("BACKG::schema-confirmed", SCHEMAS);
             res(true);
          } catch (error) {
             rej(error);
@@ -693,10 +684,10 @@ app.on('ready', async () => {
    mainWindow.fullScreen = false;
    mainWindow.maximize();
 
-   new Notification({
-      title: 'test title',
-      body: 'test body'
-   }).show();
+   // new Notification({
+   //    title: 'test title',
+   //    body: 'test body'
+   // }).show();
 
 })
 
