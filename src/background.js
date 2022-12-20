@@ -5,7 +5,7 @@ import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
-import registerBackgroundEvents from './events/background'
+// import registerBackgroundEvents from './events/background'
 const path = require('path');
 const mysql = require('mysql');
 const fs = require('fs');
@@ -702,8 +702,7 @@ app.on('ready', async () => {
    function webProdConnDefault() {
       const WEB_PROD_CONN_CRED = {
          ...OPTIONS,
-         // host: "172.16.23.15",
-         host: "172.123",
+         host: "172.16.23.15",
          user: "ijbcp",
          password: "thdwndudTHDWNDUD123!@#",
       };
