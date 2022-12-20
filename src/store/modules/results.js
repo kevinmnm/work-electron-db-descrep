@@ -172,10 +172,12 @@ export default {
          const connsEntr = Object.entries(tablesInfo);
          const connsCount = connsEntr.length;
 
-         // const final = {};
-         const final = [];
+         const final = {};
+         // const final = [];
 
          for (const title in tablesInfo) {
+            if (!final[title]) final[title] = [];
+            
             const tables = tablesInfo[title];
             tables.forEach((table) => {
                const tableName = table.TABLE_NAME;
@@ -213,7 +215,7 @@ export default {
                                  // final[title][tableName].table = tableName;
                                  // final[title][tableName].column = otherCol;
 
-                                 if (!final[title]) final[title] = [];
+                                 // if (!final[title]) final[title] = [];
 
                                  final[title].push({
                                     table: tableName,

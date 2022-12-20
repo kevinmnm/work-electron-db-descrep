@@ -30,28 +30,34 @@ contextBridge.exposeInMainWorld("electronAPI", {
       return result;
    },
 
-   "CLIENT::compare-all": async () => {
-      const result = await ipcRenderer.invoke("CLIENT::compare-all");
-      return result;
-   },
+   // "CLIENT::compare-all": async () => {
+   //    const result = await ipcRenderer.invoke("CLIENT::compare-all");
+   //    return result;
+   // },
 
    "CLIENT::get-tables-info": async () => {
       const result = await ipcRenderer.invoke("CLIENT::get-tables-info");
       return result;
    },
 
-   "CLIENT::get-columns": async (payload) => {
-      const result = await ipcRenderer.invoke("CLIENT::get-columns", payload);
-      return result;
-   },
+   // "CLIENT::get-columns": async (payload) => {
+   //    const result = await ipcRenderer.invoke("CLIENT::get-columns", payload);
+   //    return result;
+   // },
 
    "CLIENT::schema-reset": async (payload) => {
       const result = await ipcRenderer.invoke("CLIENT::schema-reset", payload);
       return result;
    },
 
+   //@@ One-way @@//
    "CLIENT::notification": (payload) => {
       ipcRenderer.send("CLIENT::notification", payload);
+   },
+
+   "CLIENT::user-login-avail": async (payload) => {
+      const result = await ipcRenderer.invoke("CLIENT::user-login-avail", payload);
+      return result;
    },
 
    //## FROM BACKG ##//
@@ -63,4 +69,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
    "BACKG::progress": async callback => {
       ipcRenderer.on("BACKG::progress", callback);
    },
+
+   // "BACKG::user-login-avail": async callback => {
+   //    ipcRenderer.on("BACKG::user-login-avail", callback);
+   // },
+
 });

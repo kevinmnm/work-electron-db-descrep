@@ -98,6 +98,7 @@ app.on('ready', async () => {
          key: fs.readFileSync(path.join(CERT_DIR, 'localhost-key.pem'))
       }
    };
+
    const QUERIES = {
       getMysqlVersion: (title) => {
          if (title) {
@@ -193,6 +194,8 @@ app.on('ready', async () => {
       },
    }
 
+   let WEB_PROD_POOL; // Default conn to check user login.
+
    const CONNS_FILTERS = ['title', 'host', 'port', 'user', 'database', 'timezone', 'all_schemas', 'mysql_version', 'system_time_zone', 'global_time_zone', 'session_time_zone'];
 
    let POOLS = {}; // Actual created pools.
@@ -204,13 +207,23 @@ app.on('ready', async () => {
 
       //## CLIENT::init ##//
       ipcMain.handle("CLIENT::init", async (event, payload) => {
-         endExistingPoolsAndConns(); // Set CONNS and POOLS to {}.
+         const result = await endExistingPoolsAndConns(); // Set CONNS and POOLS to {} and set WEB_PROD_POOL to null.
+         return result;
+      });
+
+      //## CLIENT::user-login-avail ##//
+      ipcMain.handle("CLIENT::user-login-avail", async (event, payload) => {
+         console.log('CLIENT::user-login-avail', payload);
+         const result = await checkLoginAvail(); // Set WEB_PROD_POOL.
+         console.log(result);
+         return result;
       });
 
       //## CLIENT::init-conn ##//
       ipcMain.handle("CLIENT::init-conn", async (event, payload) => {
+         const { host, user, password, port, title } = payload;
+
          try {
-            const { host, user, password, port, title } = payload;
             if (!host || !user || !title) {
                return {
                   status: false,
@@ -231,7 +244,6 @@ app.on('ready', async () => {
                password,
                port,
             });
-
 
             const poolConfig = (() => {
                if (!pool) return;
@@ -272,6 +284,7 @@ app.on('ready', async () => {
 
          } catch (error) {
             console.error(error);
+            endExistingPoolsAndConns(title)
             return { status: false, msg: error };
          }
       });
@@ -361,6 +374,8 @@ app.on('ready', async () => {
             }
 
             const webCont = mainWindow.webContents;
+
+            console.log({ mainWindow, webCont });
 
             webCont.send("BACKG::progress", {
                msg: 'Initializing..'
@@ -508,104 +523,104 @@ app.on('ready', async () => {
       });
 
       //## CLIENT::get-columns ##//
-      ipcMain.handle("CLIENT::get-columns", async (event, payload) => {
-         try {
-            // const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
-            // if (!schema) {
-            //    return {
-            //       status: false,
-            //       msg: 'No schema selected',
-            //    }
-            // }
+      // ipcMain.handle("CLIENT::get-columns", async (event, payload) => {
+      //    try {
+      //       // const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
+      //       // if (!schema) {
+      //       //    return {
+      //       //       status: false,
+      //       //       msg: 'No schema selected',
+      //       //    }
+      //       // }
 
-            if (!POOLS || Object.keys(POOLS).length < 1) {
-               const msg = `Something very wrong!`;
-               console.error(msg);
-               return { status: false, msg };
-            }
+      //       if (!POOLS || Object.keys(POOLS).length < 1) {
+      //          const msg = `Something very wrong!`;
+      //          console.error(msg);
+      //          return { status: false, msg };
+      //       }
 
-            const promiseAll = [];
+      //       const promiseAll = [];
 
-            for (const title in POOLS) {
-               const pool = POOLS[title];
-               const query = promisify(pool.query).bind(pool);
-               const promise = query(QUERIES.getTableColumnNames(title, schema));
-               promiseAll.push(promise);
-            }
+      //       for (const title in POOLS) {
+      //          const pool = POOLS[title];
+      //          const query = promisify(pool.query).bind(pool);
+      //          const promise = query(QUERIES.getTableColumnNames(title, schema));
+      //          promiseAll.push(promise);
+      //       }
 
-            const result = await Promise.all(promiseAll);
+      //       const result = await Promise.all(promiseAll);
 
-            const final = {};
-            result.forEach(arr => {
-               arr.forEach(obj => {
-                  const title = obj.__title;
-                  if (!final[title]) {
-                     final[title] = [];
-                  }
-                  final[title].push(obj);
-               });
-            });
+      //       const final = {};
+      //       result.forEach(arr => {
+      //          arr.forEach(obj => {
+      //             const title = obj.__title;
+      //             if (!final[title]) {
+      //                final[title] = [];
+      //             }
+      //             final[title].push(obj);
+      //          });
+      //       });
 
-            return {
-               status: true,
-               msg: `Retrieved data`,
-               data: final,
-            }
+      //       return {
+      //          status: true,
+      //          msg: `Retrieved data`,
+      //          data: final,
+      //       }
 
-         } catch (error) {
-            console.error(error);
-            return { status: false, msg: error };
-         }
-      });
+      //    } catch (error) {
+      //       console.error(error);
+      //       return { status: false, msg: error };
+      //    }
+      // });
 
       //## CLIENT::compare-all ##//
-      ipcMain.handle("CLIENT::compare-all", async (event, payload) => {
-         // const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
+      // ipcMain.handle("CLIENT::compare-all", async (event, payload) => {
+      //    // const schema = SCHEMA || (!payload ? null : payload.schema ? payload.schema : payload.database);
 
-         // if (!schema) {
-         //    return {
-         //       status: false,
-         //       msg: 'No schema selected',
-         //    }
-         // }
+      //    // if (!schema) {
+      //    //    return {
+      //    //       status: false,
+      //    //       msg: 'No schema selected',
+      //    //    }
+      //    // }
 
-         const {
-            getAllTablesInfo,
-         } = QUERIES;
+      //    const {
+      //       getAllTablesInfo,
+      //    } = QUERIES;
 
-         try {
+      //    try {
 
-            const tablesInfoPromises = [];
+      //       const tablesInfoPromises = [];
 
-            for (const title in CONNS) {
-               // const conn = CONNS[title];
-               // const pool = mysql.createPool({
-               //    ...OPTIONS,
-               //    host: conn.host,
-               //    user: conn.user,
-               //    password: conn.password,
-               // });
-               const pool = POOLS[title];
-               const query = promisify(pool.query).bind(pool);
-               const promise = query(getAllTablesInfo(title, schema));
-               tablesInfoPromises.push(promise);
-            }
+      //       for (const title in CONNS) {
+      //          // const conn = CONNS[title];
+      //          // const pool = mysql.createPool({
+      //          //    ...OPTIONS,
+      //          //    host: conn.host,
+      //          //    user: conn.user,
+      //          //    password: conn.password,
+      //          // });
+      //          const pool = POOLS[title];
+      //          const query = promisify(pool.query).bind(pool);
+      //          const promise = query(getAllTablesInfo(title, schema));
+      //          tablesInfoPromises.push(promise);
+      //       }
 
-            const queryResult = await Promise.all(tablesInfoPromises);
+      //       const queryResult = await Promise.all(tablesInfoPromises);
 
-            return {
-               status: true,
-               data: queryResult,
-               msg: "Retrieved data"
-            }
-         } catch (error) {
-            console.error(error);
-            return {
-               status: false,
-               msg: error,
-            }
-         }
-      });
+      //       return {
+      //          status: true,
+      //          data: queryResult,
+      //          msg: "Retrieved data"
+      //       }
+      //    } catch (error) {
+      //       console.error(error);
+      //       return {
+      //          status: false,
+      //          msg: error,
+      //       }
+      //    }
+      // });
 
       //## CLIENT::notification ##//
       ipcMain.on("CLIENT::notification", (event, payload) => {
@@ -627,8 +642,6 @@ app.on('ready', async () => {
 
    };
 
-
-
    function endExistingPoolsAndConns(title) {
       return new Promise(async (res, rej) => {
          try {
@@ -643,15 +656,23 @@ app.on('ready', async () => {
             if (!title) {
                const pools = Object.values(POOLS);
                const ends = [];
+
+               if (WEB_PROD_POOL) {
+                  const promise = promisify(WEB_PROD_POOL.end).bind(WEB_PROD_POOL);
+                  ends.push(promise());
+               }
+
                pools.forEach(pool => {
                   const promise = promisify(pool.end).bind(pool);
                   ends.push(promise());
                });
+
                await Promise.all(ends);
                POOLS = {};
                CONNS = {};
                // SCHEMA = null;
                SCHEMAS = {};
+               WEB_PROD_POOL = null;
                mainWindow.webContents.send("BACKG::schema-confirmed", SCHEMAS);
                res(true);
                return;
@@ -676,18 +697,70 @@ app.on('ready', async () => {
             console.error(error);
          }
       });
-   }
+   };
+
+   function webProdConnDefault() {
+      const WEB_PROD_CONN_CRED = {
+         ...OPTIONS,
+         // host: "172.16.23.15",
+         host: "172.123",
+         user: "ijbcp",
+         password: "thdwndudTHDWNDUD123!@#",
+      };
+      return new Promise(async (resolve, reject) => {
+         WEB_PROD_POOL = await mysql.createPool(WEB_PROD_CONN_CRED);
+
+         WEB_PROD_POOL.query(/*SQL*/`SELECT 'test' AS 'testing';`, (error, results, fields) => {
+            if (error) return reject({ status: false, msg: error.sqlMessage });
+            resolve({ status: true, msg: 'success', pool: WEB_PROD_POOL });
+         });
+      });
+   };
+
+   function checkLoginAvail() {
+      return new Promise(async (resolve, reject) => {
+         if (!mainWindow || !mainWindow.webContents) {
+            const errmsg = (!mainWindow) ? `No mainWindow...???` : `mainWindow exists but no webContents..???`;
+            console.error(errmsg);
+            const result = { status: false, msg: errmsg }
+            // reject(result);
+            resolve(result);
+            return;
+         }
+
+         const webCont = mainWindow.webContents;
+         let check;
+
+         try {
+            check = await webProdConnDefault();
+            if (!check.status) {
+               console.error(check.msg);
+               // const result = { status: check.status, msg: check.msg };
+               // webCont.send("BACKG::user-login-avail", result);
+               // resolve(result);
+               // return result;
+            }
+
+            const result = { status: check.status, msg: check.msg };
+            // webCont.send("BACKG::user-login-avail", result);
+
+            // check.status ? resolve(result) : reject(result);
+            resolve(result);
+
+            return check;
+         } catch (error) {
+            console.error(error.msg);
+            // webCont.send("BACKG::user-login-avail", error);
+            // reject(error);
+            resolve(error);
+         }
+      });
+   };
 
    registerBackgroundEvents();
-
    mainWindow = await createWindow();
    mainWindow.fullScreen = false;
    mainWindow.maximize();
-
-   // new Notification({
-   //    title: 'test title',
-   //    body: 'test body'
-   // }).show();
 
 })
 

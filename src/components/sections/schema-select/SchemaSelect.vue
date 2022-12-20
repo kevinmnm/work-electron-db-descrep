@@ -6,7 +6,24 @@
 
             <!-- <template v-slot:header-opened>opened</template> -->
             <template v-slot:header-closed>
-               <span v-html="panel_desc"></span>
+               <!-- <span v-html="panel_desc"></span> -->
+               <template v-for="(schemas, index) in schema_confirmed_entries">
+                  <v-tooltip :key="schemas + index" top>
+                     <template v-slot:activator="{ attrs, on }">
+                        <span v-bind="attrs" v-on="on">
+                           <b class="schema-confirmed">{{ schemas[1] }}</b>
+                        </span>
+                     </template>
+                     <v-sheet color="transparent">
+                        <b class="db-title">{{ schemas[0] }}</b>
+                     </v-sheet>
+                  </v-tooltip>
+                  <span
+                     v-if="index !== schema_confirmed_entries.length - 1"
+                     :key="index"
+                     >{{ " vs " }}</span
+                  >
+               </template>
             </template>
 
             <template v-slot:content>
@@ -51,7 +68,7 @@
                         @click="getSchemasInfo"
                         block
                         outlined
-                        :disabled="!schema_selected"
+                        :disabled="confirm_btn_disabled"
                         :loading="fetching_tables"
                         color="primary"
                         >CONFIRM</v-btn
@@ -176,6 +193,10 @@ import SchemaInfo from "@/components/sections/schema-select/SchemaInfo.vue";
 export default {
    name: "SchemaSelect",
 
+   data: () => ({
+      confirm_btn_disabled: true,
+   }),
+
    components: {
       PanelWrapper,
       SchemaInfo,
@@ -208,12 +229,25 @@ export default {
       schema_selected() {
          return this.$store.state.schema_selected;
       },
+      ss_ent() {
+         const ss = this.schema_selected;
+         if (!ss || Object.keys(ss).length < 1) return [];
+         return Object.entries(ss);
+      },
+      conns_ent() {
+         const co = this.conns;
+         if (!co || Object.keys(co).length < 1) return [];
+         return Object.entries(co);
+      },
+      confirm_disabled() {
+         const connsEnt = this.conns_ent;
+         const ssEnt = this.ss_ent;
+         if (connsEnt.length < 1 || ssEnt.length < 1) return true;
+         console.log({ connsEnt, ssEnt });
+         return connsEnt.length !== ssEnt.length;
+      },
       schema_confirmed() {
          return this.$store.state.schema_confirmed;
-      },
-      schema_confirmed_entries() {
-         const sCon = this.schema_confirmed;
-         return Object.entries(sCon);
       },
       co_schemas_exist() {
          return this.comparable_schemas.length > 0;
@@ -221,18 +255,21 @@ export default {
       fetching_tables() {
          return this.$store.state.results.fetching_tables;
       },
-      // panel_desc() {
-      //    const schemaConfirmed = this.schema_confirmed;
-      //    if (!schemaConfirmed) return "";
-      //    return `<b>${schemaConfirmed}</b>`;
-      // },
+      schema_confirmed_entries() {
+         const schemaConfirmed = this.schema_confirmed;
+         if (!schemaConfirmed || typeof schemaConfirmed !== "object") return [];
+         const ent = Object.entries(schemaConfirmed);
+         return ent;
+      },
       panel_desc() {
          const schemaConfirmed = this.schema_confirmed;
          if (!schemaConfirmed) return "";
          const scVals = Object.values(schemaConfirmed);
          if (scVals.length < 1) return "";
-         const scMap = scVals.map(val => `<b class="schema-confirmed">${val}</b>`);
-         const desc = scMap.join(' vs ');
+         const scMap = scVals.map(
+            (val) => `<b class="schema-confirmed">${val}</b>`
+         );
+         const desc = scMap.join(" vs ");
          return desc;
       },
       conns() {
@@ -287,6 +324,24 @@ export default {
             title,
             value: $event,
          });
+         this.toggleConfirmBtn();
+      },
+      toggleConfirmBtn() {
+         // const connsEnt = this.conns_ent;
+         // const ssEnt = this.ss_ent;
+         const conns = this.conns || {};
+         const ss = this.schema_selected || {};
+
+         const connsEnt = Object.entries(conns);
+         const ssEnt = Object.entries(ss);
+         if (connsEnt.length < 1 || ssEnt.length < 1)
+            this.confirm_btn_disabled = true;
+         console.log({ connsEnt, ssEnt });
+         if (connsEnt.length === ssEnt.length) {
+            this.confirm_btn_disabled = false;
+            return;
+         }
+         this.confirm_btn_disabled = true;
       },
       async getSchemasInfo() {
          const schemaSelected = this.schema_selected;

@@ -1,6 +1,6 @@
 <template>
    <v-sheet>
-      <v-card v-if="!connected" outlined flat>
+      <v-card v-if="!connected" flat>
          <v-card-text>
             <v-form v-model="form_valid">
                <v-text-field
@@ -8,17 +8,50 @@
                   label="Title"
                   outlined
                   dense
+                  @input="title_is_unique = false"
                   :loading="conn_fetching"
-                  :disabled="conn_fetching"
-                  :rules="[...default_rules, rules.special, rules.reserved]"
-               ></v-text-field>
+                  :disabled="conn_fetching || title_is_unique"
+                  :rules="[
+                     ...default_rules,
+                     rules.special,
+                     rules.reserved,
+                     rules.uppercase,
+                     rules.string,
+                     rules.minimum,
+                  ]"
+                  :persistent-hint="title_is_unique"
+                  :hint="title_hint"
+                  color="success"
+               >
+                  <template v-slot:append-outer>
+                     <v-btn
+                        v-if="!title_is_unique"
+                        @click="checkDuplicateTitle"
+                        icon
+                        dense
+                        rounded
+                        height="100%"
+                        :disabled="
+                           !title ||
+                           !title.trim() ||
+                           title !== title.toUpperCase()
+                        "
+                        :color="title_is_unique ? 'success' : null"
+                     >
+                        <v-icon dense>mdi-check-outline</v-icon>
+                     </v-btn>
+                     <v-icon v-if="title_is_unique" color="success" dense
+                        >mdi-lock</v-icon
+                     >
+                  </template>
+               </v-text-field>
                <v-text-field
                   v-model.trim="host"
                   label="Host"
                   outlined
                   dense
                   :loading="conn_fetching"
-                  :disabled="conn_fetching"
+                  :disabled="conn_fetching || !title_is_unique"
                   :rules="[...default_rules, rules.reserved]"
                ></v-text-field>
                <v-text-field
@@ -27,7 +60,7 @@
                   outlined
                   dense
                   :loading="conn_fetching"
-                  :disabled="conn_fetching"
+                  :disabled="conn_fetching || !title_is_unique"
                   :rules="[...default_rules]"
                ></v-text-field>
                <!-- <v-text-field
@@ -44,7 +77,7 @@
                   dense
                   type="number"
                   :loading="conn_fetching"
-                  :disabled="conn_fetching"
+                  :disabled="conn_fetching || !title_is_unique"
                ></v-text-field>
                <v-text-field
                   v-model.trim="password"
@@ -54,11 +87,11 @@
                   type="password"
                   :rules="[rules.unspaced]"
                   :loading="conn_fetching"
-                  :disabled="conn_fetching"
+                  :disabled="conn_fetching || !title_is_unique"
                ></v-text-field>
                <v-btn
                   @click="connectHandler"
-                  :disabled="!form_valid || conn_fetching"
+                  :disabled="!form_valid || conn_fetching || !title_is_unique"
                   :loading="conn_fetching"
                   color="primary"
                   block
@@ -70,14 +103,18 @@
             </v-form>
          </v-card-text>
       </v-card>
-      <v-card v-if="connected">
+      <v-card v-if="connected" flat>
          <v-card-title class="title--text">{{ title }}</v-card-title>
          <v-divider></v-divider>
          <v-card-text>
             <v-simple-table v-if="conn_table">
                <template v-slot:default>
                   <tbody>
-                     <tr v-for="(conn, ind) in conn_table" :key="ind" :class="[]">
+                     <tr
+                        v-for="(conn, ind) in conn_table"
+                        :key="ind"
+                        :class="[]"
+                     >
                         <td>
                            {{ conn[0].toUpperCase().replaceAll("_", " ") }}
                         </td>
@@ -89,11 +126,11 @@
             </v-simple-table>
          </v-card-text>
       </v-card>
-      <v-card>
+      <v-sheet>
          <v-alert v-show="alert.show" :type="alert.type">{{
             alert.msg
          }}</v-alert>
-      </v-card>
+      </v-sheet>
    </v-sheet>
 </template>
 
@@ -118,6 +155,7 @@ export default {
 
    data: () => ({
       title: null,
+      title_is_unique: false,
       host: null,
       user: null,
       database: null,
@@ -135,6 +173,31 @@ export default {
       conns() {
          return this.$store.state.conns;
       },
+      // title: {
+      //    get() {
+
+      //    },
+      //    set(val) {
+      //       this.title = val;
+      //       this.commit("CONN_TITLE_INPUTS"
+      //    }
+      // },
+      conn_title_inputs() {
+         return this.$store.state.conn_title_inputs;
+      },
+      title_hint() {
+         const isUnique = this.title_is_unique;
+         return isUnique ? "Verified!" : "Title must be unique";
+      },
+      // title_exists() {
+      //    const conns = this.conns;
+      //    const connsTitles = Object.keys(conns);
+      //    const confirmedTitles = this.conn_title_inputs;
+      //    const allExistingTitles = [...connsTitles, confirmedTitles];
+      //    const currentInput = this.title;
+
+      //    return allExistingTitles.includes(currentInput);
+      // },
       rules() {
          return this.$store.getters.input_rules;
       },
@@ -150,7 +213,9 @@ export default {
       connected() {
          const conns = this.conns;
          const title = this.title;
-         return !!conns?.[title] || false;
+         const isUnique = this.title_is_unique;
+         const connected = !!conns?.[title] && isUnique;
+         return connected;
       },
       conn_table_filter() {
          return this.$store.state.conn_table_filter;
@@ -174,14 +239,56 @@ export default {
       conn_limit() {
          return this.$store.state.conn_limit;
       },
+      conn_desired() {
+         return this.$store.state.conn_desired;
+      },
       conn_fetching() {
          return this.$store.state.conn_fetching;
       },
    },
 
    methods: {
+      checkDuplicateTitle() {
+         this.resetAlert();
+         const title = this.title;
+         const conns = this.conns;
+         const connsTitles = Object.keys(conns);
+         const confirmedTitles = this.conn_title_inputs;
+         const allExistingTitles = [...connsTitles, ...confirmedTitles];
+
+         console.warn({ allExistingTitles });
+
+         const isDup = allExistingTitles.includes(title);
+
+         if (isDup) {
+            this.title_is_unique = false;
+            this.alert = {
+               ...this.alert,
+               show: true,
+               type: "error",
+               msg: "Duplicate title detected!",
+            };
+            return;
+         }
+
+         this.title_is_unique = true;
+         const newConfirms = [...confirmedTitles, title];
+         this.$store.commit("CONN_TITLE_INPUTS", newConfirms);
+      },
       async connectHandler() {
          this.resetAlert();
+
+         // const titleConfirmed = this.title_confirmed;
+         // // If title is a duplicate //
+         // if (!titleConfirmed) {
+         //    this.alert = {
+         //       ...this.alert,
+         //       show: true,
+         //       type: 'error',
+         //       msg: 'Duplicate title detected!'
+         //    }
+         //    return;
+         // }
 
          // await this.$store.dispatch("updateConns");
 

@@ -71,7 +71,30 @@ export default {
             return true;
          }
 
-         return ({ required, special, reserved, number, minimum, unspaced });
+         const secode = (value) => {
+            if (!value) return true;
+            const number = +value;
+            if (Number.isNaN(number)) return 'Must be number';
+            const split = value.split('');
+            if (split.length !== 4) return 'Must be 4 digits';
+            return true;
+         }
+
+         const uppercase = (value) => {
+            if (!value || typeof value !== 'string') return true;
+            const current = value.trim();
+            const upper = value.toUpperCase().trim();
+            if (current !== upper) return "Must be uppercase";
+            return true;
+         }
+
+         const string = (value) => {
+            if (!value) return true;
+            if (!Number.isNaN(+value)) return "Cannot be number";
+            return true;
+         }
+
+         return ({ required, special, reserved, number, minimum, unspaced, secode, uppercase, string });
       }
    },
 }

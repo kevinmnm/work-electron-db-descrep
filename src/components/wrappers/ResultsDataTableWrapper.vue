@@ -1,8 +1,35 @@
 <template>
-   <v-data-table :headers="headersProp" :items="itemsProp" dense>
+   <v-data-table :headers="headersProp" :items="itemsProp" fixed-header dense>
       <template v-if="titleProp" v-slot:top>
          <v-card class="text-center" flat tile>
             <v-card-text class="db-title">{{ titleProp }}</v-card-text>
+            <!-- <v-card-actions>
+               <v-icon>mdi-delete</v-icon>
+            </v-card-actions> -->
+            <!-- <v-sheet class="subtitle-1 caption" v-html="descProp"></v-sheet> -->
+            <v-sheet
+               v-if="descProp"
+               class="d-flex flex-row justify-end align-center pl-1 pr-1"
+               color="#1b1b1b"
+            >
+               <v-tooltip top>
+                  <template v-slot:activator="{ attrs, on }">
+                     <v-hover v-slot="{ hover }">
+                        <v-icon
+                           v-bind="attrs"
+                           v-on="on"
+                           :style="{
+                              cursor: 'default',
+                              opacity: hover ? 1 : 0.6
+                           }"
+                           small
+                           >mdi-help-circle-outline</v-icon
+                        >
+                     </v-hover>
+                  </template>
+                  <span v-html="descProp"></span>
+               </v-tooltip>
+            </v-sheet>
          </v-card>
       </template>
 
@@ -43,6 +70,10 @@ export default {
       itemsProp: {
          type: Array,
          required: true,
+      },
+      descProp: {
+         type: String,
+         required: false,
       },
    },
 

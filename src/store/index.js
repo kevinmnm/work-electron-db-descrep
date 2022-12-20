@@ -7,6 +7,7 @@ import results from "./modules/results.js";
 import progress from "./modules/progress.js";
 import panels from "./modules/panels.js";
 import dev from "./modules/dev.js";
+import creds from "./modules/creds.js";
 
 const isDev = process.env.NODE_ENV === 'development';
 console.warn({ isDev });
@@ -16,7 +17,9 @@ Vue.use(Vuex);
 export default new Vuex.Store({
    state: {
       conn_min: 2, // Minimun DB connection required for comparison (static value).
-      conn_limit: 2, // How many DB connection allowed for the app (static value).
+      conn_limit: 3, // How many DB connection allowed for the app (static value).
+      conn_desired: 2, // How many conns user wants to compare (can change).
+      conn_title_inputs: [], // To prevent duplicate title/connection.
       conn_table_filter: ['host', 'port', 'user', 'mysql_version', 'system_time_zone', 'global_time_zone', 'session_time_zone'], // Filter to show on table UI (static value) and must be included in CONNS_FILTERS variable.
       conns: {}, // {<title>: {...}}
       // schema_synced: [],
@@ -88,6 +91,12 @@ export default new Vuex.Store({
    mutations: {
       CONNS(state, payload) {
          state.conns = payload;
+      },
+      CONN_DESIRED(state, payload) {
+         state.conn_desired = payload;
+      },
+      CONN_TITLE_INPUTS(state, payload) {
+         state.conn_title_inputs = payload;
       },
       SECHEMA_SYNCED(state, payload) {
          state.schema_synced = payload;
@@ -170,6 +179,7 @@ export default new Vuex.Store({
       results,
       progress,
       panels,
+      creds,
       ...(isDev ? { dev } : {}),
    },
 });

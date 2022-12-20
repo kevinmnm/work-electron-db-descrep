@@ -12,6 +12,7 @@
             :title-prop="title_prop"
             :headers-prop="headers"
             :items-prop="items"
+            :desc-prop="desc_prop"
          ></ResultsDataTableWrapper>
       </v-sheet>
       <v-sheet v-if="!show">no data</v-sheet>
@@ -66,6 +67,15 @@ export default {
          const title = this.title_prop;
          if (!missingCols || !title) return;
          return missingCols[title];
+      },
+      schema_confirmed() {
+         return this.$store.state.schema_confirmed;
+      },
+      desc_prop() {
+         const title = this.title_prop;
+         if (!title || !this.schema_confirmed) return;
+         const schema = this.schema_confirmed[title];
+         return `List of columns that exist in the <b class="schema-confirmed">${schema}</b> schema of <b class="db-title">${title}</b> connection but not in others.`;
       },
    },
 };
